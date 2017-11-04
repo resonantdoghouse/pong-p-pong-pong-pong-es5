@@ -17,6 +17,10 @@ var canvas,
     player2Score = 0,
     framesPerSecond = 60;
 
+
+const WINNING_SCORE = 3;
+
+
 var background = new Image();
 
 background.src = './assets/images/space-tile.jpg';
@@ -53,7 +57,7 @@ function init() {
     canvasContext = canvas.getContext('2d');
     backgroundWidth = background.width;
 
-    backgroundOffset = (backgroundWidth - canvas.width)-framesPerSecond;
+    backgroundOffset = (backgroundWidth - canvas.width) - framesPerSecond;
     canvasNegWidth = pos_to_neg(backgroundOffset);
 
 
@@ -67,10 +71,14 @@ function init() {
         paddle1Y = mousePos.y - (paddleHeight / 2);
     })
 
-
 }
 
 function ballReset() {
+    if (player1Score >= WINNING_SCORE ||
+        player2Score >= WINNING_SCORE) {
+        player1Score = 0;
+        player2Score = 0;
+    }
     ballSpeedX = -ballSpeedX;
     ballX = canvas.width / 2;
     ballY = canvas.height / 2;
@@ -94,27 +102,37 @@ function moveEverything() {
     if (ballX < 0) {
         if (ballY > paddle1Y &&
             ballY < paddle1Y + paddleHeight) {
+
+            playSound(0);
             ballSpeedX = -ballSpeedX;
 
             var deltaY = ballY - (paddle1Y + paddleHeight / 2);
             ballSpeedY = deltaY * 0.35;
         } else {
-            ballReset();
+
+            playSound(1);
             player2Score++;
+            ballReset();
         }
 
     }
 
     if (ballX > canvas.width) {
+
         if (ballY > paddle2Y &&
             ballY < paddle2Y + paddleHeight) {
+
+            playSound(0);
             ballSpeedX = -ballSpeedX;
 
             var deltaY = ballY - (paddle2Y + paddleHeight / 2);
             ballSpeedY = deltaY * 0.35;
+
         } else {
-            ballReset();
+
+            playSound(1);
             player1Score++;
+            ballReset();
         }
     }
 
@@ -172,4 +190,59 @@ function colorCircle(centerX, centerY, radius, drawColor) {
 function colorRect(leftX, topY, width, height, drawColor) {
     canvasContext.fillStyle = drawColor;
     canvasContext.fillRect(leftX, topY, width, height);
+}
+
+
+
+/**
+ * Audio api oscillators
+ */
+
+var audioCtx = new AudioContext();
+var oscillator;
+var gainNode = audioCtx.createGain();
+
+gainNode.connect(audioCtx.destination);
+
+// osc.connect(gainNode);
+// osc.start();
+
+function playSound(soundType) {
+
+    oscillator = audioCtx.createOscillator();
+    oscillator.frequency.value = getRandomArbitrary(240,640);
+
+    function getRandomArbitrary(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    oscillatorTypes = ['sine', 'sawtooth', 'square', 'triangle'];
+
+    switch (soundType) {
+        case 0:
+            oscillator.type = oscillatorTypes[0];
+            break;
+
+        case 1:
+            oscillator.type = oscillatorTypes[1];
+            break;
+    }
+
+    oscillator.connect(gainNode);
+    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+    oscillator.start();
+
+    var stopAudio = function () {
+
+        gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+
+        oscillator.disconnect(gainNode);
+        setTimeout(function () {
+            oscillator.stop();
+
+        }, 1000);
+    }
+
+    setTimeout(stopAudio, 100);
 }
